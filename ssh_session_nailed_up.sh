@@ -188,6 +188,7 @@ sshConfigurationOptionArgs=(
     -o StrictHostKeyChecking=no 
 
     -o PubkeyAcceptedKeyTypes=+ssh-rsa 
+    -o HostKeyAlgorithms=+ssh-rsa
     #temporary work-around for sophos router (I might need to replace my
     # favorite keypair  with a new one that does not rely on the now-deprecated
     # SHA-1 hash algorithm (although I am not entirely sure how the key pair
