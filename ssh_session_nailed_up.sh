@@ -15,12 +15,12 @@
 # - ssh_private_key_reference This can take one of several possible forms:
 #   
 #   (empty or nonexistent) : In this case, we assume that the private key is
-#   contained in a file, named "id_rsa", attached to the current bitwarden item
+#   contained in a file, named "id_rsa", or "id_dsa", attached to the current bitwarden item
 #   (or that we can keep following chains of ssh_private_key_reference until
 #   eventually we hit such an item (not yet implemented.  TODO))
 #   
 #   a truthy string: In this case, we take the string as a the id of a bitwarden
-#   item, and we fetch the file name "id_rsa" attached to that bitwarden item.
+#   item, and we fetch the file name "id_rsa" or "id_dsa", attached to that bitwarden item.
 #   
 #   TODO: allow to specify the signature of a private key that we will look for
 #   elsewhere.
@@ -178,6 +178,10 @@ fi;
 echo "idOfBitwardenItemContainingThePrivateKey: ${idOfBitwardenItemContainingThePrivateKey}" 1>&2
 sshPrivateKey="$(bw --raw get attachment "id_rsa" --itemid "$idOfBitwardenItemContainingThePrivateKey")"
 if [ -z "${sshPrivateKey}" ] ; then : ;
+    sshPrivateKey="$(bw --raw get attachment "id_dsa" --itemid "$idOfBitwardenItemContainingThePrivateKey")"
+fi;
+# echo "sshPrivateKey: ${sshPrivateKey}" 1>&2
+if [ -z "${sshPrivateKey}" ] ; then : ;
     echo "warning: ssh_private_key is empty." 1>&2
 else : ;
     echo "ssh_private_key is present." 1>&2
@@ -187,8 +191,8 @@ fi;
 sshConfigurationOptionArgs=(
     -o StrictHostKeyChecking=no 
 
-    -o PubkeyAcceptedKeyTypes=+ssh-rsa 
-    -o HostKeyAlgorithms=+ssh-rsa
+    # -o PubkeyAcceptedKeyTypes=+ssh-rsa
+    # -o HostKeyAlgorithms=+ssh-rsa
     #temporary work-around for sophos router (I might need to replace my
     # favorite keypair  with a new one that does not rely on the now-deprecated
     # SHA-1 hash algorithm (although I am not entirely sure how the key pair
@@ -197,6 +201,21 @@ sshConfigurationOptionArgs=(
     # possibly, I merely need to recompute a different hash of my public key and
     # store this different hash in the the server. see
     # https://www.openssh.com/txt/release-8.2
+
+    # evidently, if we have multiple "-o HostKeyAlgorithms..." options, only the
+    # first one is attended to, even when we are using the "+" notation to say
+    # "add this item to the existing list". hence, I have combined the sophos
+    # router workaround (+ssh-rsa) and the ILO3 workaround (+ssh-dss) into one
+    # option argument for each property.  We ought to figure ought a way to
+    # encode these options for exceptional cases in bitwarden.
+    -o HostKeyAlgorithms=+ssh-rsa,ssh-dss
+    -o PubkeyAcceptedKeyTypes=+ssh-rsa,ssh-dss
+    -o KexAlgorithms=+diffie-hellman-group1-sha1
+    # this is a workaround for ssh'ing into an ILO3 controller on an HP Proliant
+    # Gen7 server. allowing this key exchange algorithm constitutes a reduction
+    # in security, and probably shouldn't be left here for all time.
+    # see [https://unix.stackexchange.com/questions/340844/how-to-enable-diffie-hellman-group1-sha1-key-exchange-on-debian-8-0]
+    # see [http://www.openssh.com/legacy.html]
 
     -o ServerAliveInterval=5
 
